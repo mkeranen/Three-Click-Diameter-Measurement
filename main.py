@@ -181,7 +181,7 @@ def convert_from_pixels_to_inches(refPixelLength, actualRefLength, sampleMsmtPix
     
     return lengthOfSampleMeasurementInRefUnits
 
-def analysis_results(serialNumber, referenceDimension, sampleMeasurement, refCirclePx, sampleCirclePx, img):
+def analysis_results(serialNumber, descriptor, referenceDimension, sampleMeasurement, refCirclePx, sampleCirclePx, img):
     """Exports results of sample measurements.
     Draws circles created by user point selection, prints measurement results, 
     overlays text on samlple image to identify sample.
@@ -212,46 +212,47 @@ def analysis_results(serialNumber, referenceDimension, sampleMeasurement, refCir
 #------------------------------------------------------------------------------
 #Start of Main Program
 #------------------------------------------------------------------------------
-
-#Get sample info from user
-serialNumber, descriptor, referenceDimension = get_sample_info()
-
-#Get picture
-imgPath = get_picture_to_analyze()
-
-#Prepare image
-img = image_preparation(imgPath)
-
-#Start tracking mouse clicks (right mouse button only)
-cv2.setMouseCallback('image', mouse_callback)
-
-#Show image and instruct user how to proceed
-img = cv2.imshow('image', img)
-print('\nSelect three points along the circumference of the potting diameter.')
-cv2.waitKey(0)
-
-#Calculate the diameters of the reference circle and sample circle in pixels
-refCirclePx = calculate_pix_circle(right_clicks[3],right_clicks[4],right_clicks[5])
-sampleCirclePx = calculate_pix_circle(right_clicks[0],right_clicks[1],right_clicks[2])
-
-#Check to make sure the user selected adequate points for diameter calculation
-refRatio = triangle_area_to_circle_area_ratio(right_clicks[3],right_clicks[4],right_clicks[5], refCirclePx[2])
-sampleRatio = triangle_area_to_circle_area_ratio(right_clicks[0],right_clicks[1],right_clicks[2], sampleCirclePx[2])
-
-#If user did not select adequate points, let them know
-if refRatio < 0 or sampleRatio < 0:
-    print('Pick points further away from each other')
-
-#Convert from pixels to reference dimension units and calculate sample diameter
-pottingDiameter = convert_from_pixels_to_inches(refCirclePx[2], referenceDimension, sampleCirclePx[2])
-
-#Reload original image in color
-img = image_preparation(imgPath,1)
-
-#Export and display results of measurement
-img = analysis_results(serialNumber, referenceDimension, pottingDiameter, refCirclePx, sampleCirclePx, img)
-img = cv2.imshow('image', img)
-cv2.waitKey(0)
-
-
-
+def main():
+    #Get sample info from user
+    serialNumber, descriptor, referenceDimension = get_sample_info()
+    
+    #Get picture
+    imgPath = get_picture_to_analyze()
+    
+    #Prepare image
+    img = image_preparation(imgPath)
+    
+    #Start tracking mouse clicks (right mouse button only)
+    cv2.setMouseCallback('image', mouse_callback)
+    
+    #Show image and instruct user how to proceed
+    img = cv2.imshow('image', img)
+    print('\nSelect three points along the circumference of the potting diameter.')
+    cv2.waitKey(0)
+    
+    #Calculate the diameters of the reference circle and sample circle in pixels
+    refCirclePx = calculate_pix_circle(right_clicks[3],right_clicks[4],right_clicks[5])
+    sampleCirclePx = calculate_pix_circle(right_clicks[0],right_clicks[1],right_clicks[2])
+    
+    #Check to make sure the user selected adequate points for diameter calculation
+    refRatio = triangle_area_to_circle_area_ratio(right_clicks[3],right_clicks[4],right_clicks[5], refCirclePx[2])
+    sampleRatio = triangle_area_to_circle_area_ratio(right_clicks[0],right_clicks[1],right_clicks[2], sampleCirclePx[2])
+    
+    #If user did not select adequate points, let them know
+    if refRatio < 0 or sampleRatio < 0:
+        print('Pick points further away from each other')
+    
+    #Convert from pixels to reference dimension units and calculate sample diameter
+    pottingDiameter = convert_from_pixels_to_inches(refCirclePx[2], referenceDimension, sampleCirclePx[2])
+    
+    #Reload original image in color
+    img = image_preparation(imgPath,1)
+    
+    #Export and display results of measurement
+    img = analysis_results(serialNumber, descriptor, referenceDimension, pottingDiameter, refCirclePx, sampleCirclePx, img)
+    img = cv2.imshow('image', img)
+    cv2.waitKey(0)
+    
+if __name__ == '__main__':
+    main()
+    
