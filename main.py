@@ -19,10 +19,18 @@ import math
 
 
 mpmath.mp.dps = 15
-right_clicks=[]
+rightClicks = []
 pi = 3.14159
 
 #Functions
+def is_number(num):
+    """For detecting if parameter is a number. If 'num' cannot be typecast
+    to float, assume that it's not a number."""
+    try:
+        float(num)
+        return True
+    except ValueError:
+        return False
 
 def get_sample_info():
     """
@@ -34,10 +42,46 @@ def get_sample_info():
     Takes no parameters, returns sample serial number, whether the sample is
     the inlet or the outlet, and the dimension of the reference object.
     """
+    while True:
+        try:
+            serialNumber = input('Enter the sample serial number being measured: ')
+        except ValueError:
+            print('Invalid. Please re-enter serial number.')
+            continue
+        if serialNumber.isnumeric() == False:
+            print('Serial number must consist of only numeric characters. Re-enter serial number.')
+            continue
+        if len(serialNumber) != 8:
+            print('Serial number must be 8 digits long. Ex: 07412345. Re-enter serial number.')
+            continue
+        else:
+            break
     
-    serialNumber = input('Enter the sample serial number being measured: ')
-    descriptor = input('Enter short (1 or 2 word) description of sample: ')
-    referenceDimension = float(input('Enter the measured dimension of the reference object in inches: '))
+    while True:
+        try:
+            descriptor = input('Enter short (1 or 2 word) description of sample: ')
+        except ValueError:
+            print('Invalid. Please re-enter descriptor.')
+            continue
+        if len(descriptor) > 15:
+            print('Please shorten descriptor length to 15 or fewer characters. Please re-enter descriptor.')
+            continue
+        else:
+            break
+        
+    while True:
+        try:
+            referenceDimension = input('Enter the measured dimension of the reference object in inches: ')
+        except ValueError:
+            print('Invalid. Please re-enter reference dimension.')
+            continue
+        if is_number(referenceDimension) == False:
+            print('Dimension must be a number only. Re-enter reference dimension.')
+            continue
+        else:
+            referenceDimension = float(referenceDimension)
+            break
+
     return serialNumber, descriptor, referenceDimension
 
 def get_picture_to_analyze():
@@ -47,7 +91,23 @@ def get_picture_to_analyze():
     Takes no parameters, returns path to image. Future versions may include
     picture taking/saving functionality
     """
-    imagePath = str(input('Enter path to image, including extension: '))
+    
+    #Validate user input. Require working image path.
+    while True:
+        try:
+            imagePath = str(input('Enter path to image, including extension: '))
+        except ValueError:
+            print('Invalid. Please re-enter path to image.')
+            continue
+        if  '.' not in imagePath:
+            print('Ensure that image path includes extension. Please re-enter image path.')
+            continue
+        if cv2.imread(imagePath,1) == None:
+            print('Image does not exist at specified filepath. Please re-enter image path.')
+            continue
+        else:
+            break
+        
     return imagePath
         
 def image_preparation(imagePath,color=0):
@@ -83,17 +143,17 @@ def mouse_callback(event, x, y, flags, params):
     
     #right-click event value is 2
     if event == 2:
-        global right_clicks
+        global rightClicks
 
         #store the coordinates of the right-click event
-        right_clicks.append([x, y])
+        rightClicks.append([x, y])
         
         #After user selects 3 points on potting diameter, switch to reference diameter
-        if len(right_clicks)==3:
+        if len(rightClicks)==3:
             print('\nSelect three points along the circumference of the reference diameter.\n')
         
         #When all points are selected, close windows
-        elif len(right_clicks)==6: 
+        elif len(rightClicks)==6: 
             cv2.destroyAllWindows()
             
 def calculate_pix_circle(p1, p2, p3):
@@ -219,28 +279,46 @@ def main():
     #Get picture
     imgPath = get_picture_to_analyze()
     
-    #Prepare image
-    img = image_preparation(imgPath)
+    #Check to make sure that user selects points that are sufficiently far apart
+    #to ensure measurement precision
     
-    #Start tracking mouse clicks (right mouse button only)
-    cv2.setMouseCallback('image', mouse_callback)
-    
-    #Show image and instruct user how to proceed
-    img = cv2.imshow('image', img)
-    print('\nSelect three points along the circumference of the potting diameter.')
-    cv2.waitKey(0)
-    
-    #Calculate the diameters of the reference circle and sample circle in pixels
-    refCirclePx = calculate_pix_circle(right_clicks[3],right_clicks[4],right_clicks[5])
-    sampleCirclePx = calculate_pix_circle(right_clicks[0],right_clicks[1],right_clicks[2])
-    
-    #Check to make sure the user selected adequate points for diameter calculation
-    refRatio = triangle_area_to_circle_area_ratio(right_clicks[3],right_clicks[4],right_clicks[5], refCirclePx[2])
-    sampleRatio = triangle_area_to_circle_area_ratio(right_clicks[0],right_clicks[1],right_clicks[2], sampleCirclePx[2])
-    
-    #If user did not select adequate points, let them know
-    if refRatio < 0 or sampleRatio < 0:
-        print('Pick points further away from each other')
+    while True:
+        
+        #Have the user pick 3 points along the sample and reference diameter
+        try:
+            
+            #Prepare image
+            img = image_preparation(imgPath)
+
+            #Start tracking mouse clicks (right mouse button only)
+            cv2.setMouseCallback('image', mouse_callback)
+            
+            #Show image and instruct user how to proceed
+            img = cv2.imshow('image', img)
+            print('\nSelect three points along the circumference of the potting diameter.')
+            cv2.waitKey(0)
+   
+            #Calculate the diameters of the reference circle and sample circle in pixels
+            refCirclePx = calculate_pix_circle(rightClicks[3],rightClicks[4],rightClicks[5])
+            sampleCirclePx = calculate_pix_circle(rightClicks[0],rightClicks[1],rightClicks[2])
+            
+            #Check to make sure the user selected adequate points for diameter calculation
+            refRatio = triangle_area_to_circle_area_ratio(rightClicks[3],rightClicks[4],rightClicks[5], refCirclePx[2])
+            sampleRatio = triangle_area_to_circle_area_ratio(rightClicks[0],rightClicks[1],rightClicks[2], sampleCirclePx[2])
+        
+        except ValueError:
+            print('Value Error')
+            continue
+            
+        #If user did not select adequate points, let them know and have them pick new points
+        if refRatio < 0.1 or sampleRatio < 0.1:
+            print('Selected points too close together. Pick points further away from each other.')
+            del rightClicks[:]
+            continue
+        
+        else:
+            break
+            
     
     #Convert from pixels to reference dimension units and calculate sample diameter
     pottingDiameter = convert_from_pixels_to_inches(refCirclePx[2], referenceDimension, sampleCirclePx[2])
